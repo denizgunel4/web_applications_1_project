@@ -1,0 +1,12 @@
+schema: "classroom50/repo-config/v1"
+classroom: "wa1-2026-exams"
+assignment: "wa1-2026-exam3"
+owner:
+  username: "denizgunel4"
+  id: 122899271
+  accepted_at: "2026-08-20T14:56:15Z"
+source:
+  owner: "polito-WA1-2026-exam"
+  owner_id: 285230420
+  repo: "polito-wa1-2026-exam-exam-simulation-exam-template-1"
+  branch: "main"
