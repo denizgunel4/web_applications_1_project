@@ -1,4 +1,5 @@
 // imports
+import "./database/database.js";
 import express from "express";
 
 // init express
