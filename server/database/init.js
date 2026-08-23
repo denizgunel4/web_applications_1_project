@@ -1,4 +1,4 @@
-import db from "./database.js";
+import db, { databaseReady } from "./database.js";
 
 // user table
 function createUsersTable() {
@@ -110,6 +110,8 @@ function createGameLocationsTable() {
 
 async function initDatabase() {
     try {
+        await databaseReady;
+        
         await createUsersTable();
         await createLocationsTable();
         await createCluesTable();
