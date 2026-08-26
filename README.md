@@ -1,5 +1,5 @@
-# Exam #N: "Exam Title"
-## Student: s123456 LASTNAME FIRSTNAME 
+# Exam #3: "Treasure Hunt"
+## Student: s364071 GUNEL DENIZ 
 
 ## React Client Application Routes
 
@@ -22,9 +22,11 @@
 
 ## Database Tables
 
-- Table `users` - contains xx yy zz
-- Table `something` - contains ww qq ss
-- ...
+- Table `users` - contains userId username saltedPassword salt
+- Table `locations` - contains locationId locationName xPosition yPosition
+- Table `clues`- contains clueId clueText locationId
+- Table `games`- contains gameId userId difficulty startedAt expiresAt treasureCoins gameStatus currentStep
+- Table `gameLocations` - contains gameId locationId routeOrder
 
 ## Main React Components
 

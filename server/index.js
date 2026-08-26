@@ -1,11 +1,27 @@
+process.loadEnvFile();
 // imports
 import express from "express";
+import session from "express-session";
+import passport from "./auth/passport.js";
 import "./database/database.js";
 import initDatabase from "./database/init.js";
 
 // init express
 const app = new express();
 const port = 3001;
+
+// parse json request bodies
+app.use(express.json());
+
+// manage login sessions with session cookies
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+
+// connect passport to session
+app.use(passport.authenticate("session"));
 
 // activate the server
 async function startServer() {
