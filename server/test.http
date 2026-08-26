@@ -1,0 +1,18 @@
+
+
+### check current session
+GET http://localhost:3001/api/sessions/current
+
+
+### login
+POST http://localhost:3001/api/sessions
+Content-Type: application/json
+
+{
+    "username": "testUser",
+    "password": "testPassword123"
+}
+
+
+### logout
+DELETE http://localhost:3001/api/sessions/current
