@@ -9,8 +9,17 @@ POST http://localhost:3001/api/sessions
 Content-Type: application/json
 
 {
-    "username": "testUser",
-    "password": "testPassword123"
+    "username": "username1",
+    "password": "password1"
+}
+
+
+### create a new game (easy)
+POST http://localhost:3001/api/games
+Content-Type: application/json
+
+{
+    "difficulty": "Easy"
 }
 
 

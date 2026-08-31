@@ -6,10 +6,178 @@ import passport from "./auth/passport.js";
 import "./database/database.js";
 import initDatabase from "./database/init.js";
 import cors from "cors";
+import {
+    getAllLocations,
+    createGame,
+    addGameLocation,
+    findClueByLocationId,
+    findActiveGameByUserId,
+    beginTransaction,
+    commitTransaction,
+    rollbackTransaction
+} from "./dao.js";
 
 // init express
 const app = new express();
 const port = 3001;
+
+// game settings for each difficulty
+const difficultySettings = {
+    Easy: {
+        locationCount: 4,
+        timeLimit: 120,
+        positions: [
+            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
+            { positionIndex: 2, x: 30, y: 70, routeOrder: 2 },
+            { positionIndex: 3, x: 70, y: 75, routeOrder: null },
+            { positionIndex: 4, x: 80, y: 40, routeOrder: null }
+        ]
+    },
+    Intermediate: {
+        locationCount: 8,
+        timeLimit: 80,
+        positions: [
+            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
+            { positionIndex: 2, x: 30, y: 70, routeOrder: 2 },
+            { positionIndex: 3, x: 35, y: 35, routeOrder: 3 },
+            { positionIndex: 4, x: 45, y: 75, routeOrder: 4 },
+            { positionIndex: 5, x: 55, y: 70, routeOrder: null },
+            { positionIndex: 6, x: 55, y: 40, routeOrder: null },
+            { positionIndex: 7, x: 70, y: 75, routeOrder: null },
+            { positionIndex: 8, x: 80, y: 40, routeOrder: null }
+        ]
+    },
+    Hard: {
+        locationCount: 12,
+        timeLimit: 60,
+        positions: [
+            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
+            { positionIndex: 2, x: 28, y: 35, routeOrder: 2 },
+            { positionIndex: 3, x: 35, y: 40, routeOrder: 3 },
+            { positionIndex: 4, x: 42, y: 45, routeOrder: 4 },
+            { positionIndex: 5, x: 48, y: 50, routeOrder: 5 },
+            { positionIndex: 6, x: 55, y: 55, routeOrder: 6 },
+            { positionIndex: 7, x: 60, y: 60, routeOrder: null },
+            { positionIndex: 8, x: 65, y: 65, routeOrder: null },
+            { positionIndex: 9, x: 70, y: 70, routeOrder: null },
+            { positionIndex: 10, x: 75, y: 30, routeOrder: null },
+            { positionIndex: 11, x: 65, y: 30, routeOrder: null },
+            { positionIndex: 12, x: 80, y: 80, routeOrder: null }
+        ]
+    }
+};
+
+// validate difficulty configuration
+function validateDifficultySettings() {
+    for (const [difficulty, settings] of Object.entries(difficultySettings)) {
+        if (settings.positions.length !== settings.locationCount) {
+            throw new Error(
+                `${difficulty}: number of positions must equal locationCount`
+            );
+        }
+
+        const routePositions = settings.positions.filter(
+            (position) => position.routeOrder !== null
+        );
+
+        if (routePositions.length !== settings.locationCount / 2) {
+            throw new Error(
+                `${difficulty}: number of route positions must equal locationCount / 2`
+            );
+        }
+
+        const routeOrders = routePositions
+            .map((position) => position.routeOrder)
+            .sort((a, b) => a - b);
+
+        for (let i = 0; i < routeOrders.length; i++) {
+            if (routeOrders[i] !== i + 1) {
+                throw new Error(
+                    `${difficulty}: routeOrder values must be consecutive starting from 1`
+                );
+            }
+        }
+    }
+}
+
+// randomly select a given number of locations
+function selectRandomLocations(locations, count) {
+    const shuffledLocations = [...locations];
+
+    for (let i = shuffledLocations.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+
+        [shuffledLocations[i], shuffledLocations[randomIndex]] =
+            [shuffledLocations[randomIndex], shuffledLocations[i]];
+    }
+
+    return shuffledLocations.slice(0, count);
+}
+
+// assign route order to selected route locations
+function createRoute(locations) {
+    return locations.map((location, index) => ({
+        ...location,
+        routeOrder: index + 1
+    }));
+}
+
+// generate a random treasure value, min: 10 and max: 100
+function generateTreasureCoins() {
+    // 100 - 10 + 1 = 91
+    return Math.floor(Math.random() * 91) + 10;
+}
+
+// get settings for a difficulty level
+function getDifficultySettings(difficulty) {
+    return difficultySettings[difficulty];
+}
+
+// assign selected locations to predefined map positions
+function assignLocationsToPositions(gameLocations, route, positions) {
+    const assignments = [];
+
+    const routePositions = positions.filter(
+        (position) => position.routeOrder !== null
+    );
+
+    const decoyPositions = positions.filter(
+        (position) => position.routeOrder === null
+    );
+
+    const decoyLocations = gameLocations.filter(
+        (location) => !route.some(
+            (routeLocation) => routeLocation.locationId === location.locationId
+        )
+    );
+
+    for (const routeLocation of route) {
+        const position = routePositions.find(
+            (position) => position.routeOrder === routeLocation.routeOrder
+        );
+
+        assignments.push({
+            locationId: routeLocation.locationId,
+            positionIndex: position.positionIndex,
+            routeOrder: routeLocation.routeOrder
+        });
+    }
+
+    const shuffledDecoyPositions = selectRandomLocations(
+        decoyPositions,
+        decoyPositions.length
+    );
+
+    decoyLocations.forEach((location, index) => {
+        assignments.push({
+            locationId: location.locationId,
+            positionIndex: shuffledDecoyPositions[index].positionIndex,
+            routeOrder: null
+        });
+    });
+
+    return assignments;
+}
 
 // allow requests from react client
 app.use(cors({
@@ -29,6 +197,134 @@ app.use(session({
 
 // connect passport to session
 app.use(passport.authenticate("session"));
+
+// start a new game
+app.post("/api/games", async (req, res) => {
+    const { difficulty } = req.body;
+
+    const settings = getDifficultySettings(difficulty);
+
+    if (!settings) {
+        return res.status(400).json({
+            error: "Invalid difficulty"
+        });
+    }
+
+    if (!req.isAuthenticated()) {
+    return res.status(401).json({
+        error: "Not authenticated"
+    });
+    }
+
+    const activeGame = await findActiveGameByUserId(req.user.userId);
+
+    if (activeGame) {
+        return res.status(409).json({
+            error: "You already have an active game"
+        });
+    }
+
+    const allLocations = await getAllLocations();
+
+    if (allLocations.length < settings.locationCount) {
+        return res.status(500).json({
+            error: "Not enough locations available"
+        });
+    }
+
+    const gameLocations = selectRandomLocations(
+        allLocations,
+        settings.locationCount
+    );
+
+    const routeLocations = selectRandomLocations(
+        gameLocations,
+        settings.locationCount / 2
+    );
+
+    const route = createRoute(routeLocations);
+
+    const treasureCoins = generateTreasureCoins();
+
+    const startedAt = Date.now();
+    // convert time limit from seconds to milliseconds
+    const expiresAt = startedAt + settings.timeLimit * 1000;
+
+    const firstRouteLocation = route.find(
+        (location) => location.routeOrder === 1
+    );
+
+    const firstClue = await findClueByLocationId(
+        firstRouteLocation.locationId
+    );
+
+    if (!firstClue) {
+        return res.status(500).json({
+            error: "Could not find starting clue"
+        });
+    }
+
+    let gameId;
+
+    try {
+        await beginTransaction();
+
+        gameId = await createGame(
+            req.user.userId,
+            difficulty,
+            startedAt,
+            expiresAt,
+            treasureCoins
+        );
+
+        const assignments = assignLocationsToPositions(
+            gameLocations,
+            route,
+            settings.positions
+        );
+
+        for (const assignment of assignments) {
+            await addGameLocation(
+            gameId,
+            assignment.locationId,
+            assignment.positionIndex,
+            assignment.routeOrder
+            );
+        }
+
+        await commitTransaction();
+
+        const availableLocations = gameLocations.map((location) => ({
+            locationId: location.locationId,
+            locationName: location.locationName
+        }));
+
+        return res.status(201).json({
+            gameId,
+            difficulty,
+            expiresAt,
+            currentStep: 0,
+            clue: {
+                clueId: firstClue.clueId,
+                clueText: firstClue.clueText
+
+            },
+            locations: availableLocations
+        });
+
+    } catch (err) {
+        try {
+            await rollbackTransaction();
+        } catch (rollbackErr) {
+            console.error("Rollback failed:", rollbackErr);
+        }
+
+        return res.status(500).json({
+            error: "Could not create game"
+        });
+    }
+
+});
 
 // login
 app.post("/api/sessions", passport.authenticate("local"), (req, res) => {
@@ -59,6 +355,8 @@ app.delete("/api/sessions/current", (req, res) => {
 // activate the server
 async function startServer() {
     try {
+        validateDifficultySettings();
+
         await initDatabase();
 
         app.listen(port, () => {
