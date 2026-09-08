@@ -12,6 +12,11 @@ import {
     addGameLocation,
     findClueByLocationId,
     findActiveGameByUserId,
+    findExpectedLocation,
+    updateGameStep,
+    findGameLocations,
+    markGameAsWon,
+    markGameAsLost,
     beginTransaction,
     commitTransaction,
     rollbackTransaction
@@ -305,7 +310,6 @@ app.post("/api/games", async (req, res) => {
             expiresAt,
             currentStep: 0,
             clue: {
-                clueId: firstClue.clueId,
                 clueText: firstClue.clueText
 
             },
@@ -321,6 +325,206 @@ app.post("/api/games", async (req, res) => {
 
         return res.status(500).json({
             error: "Could not create game"
+        });
+    }
+
+});
+
+// submit an answer for current game
+app.post("/api/games/current/answer", async (req, res) => {
+    try {
+        const { locationId } = req.body;
+
+        if (!req.isAuthenticated()) {
+            return res.status(401).json({
+                error: "Not authenticated"
+            });
+        }
+
+        const activeGame = await findActiveGameByUserId(req.user.userId);
+
+        if (!activeGame) {
+            return res.status(404).json({
+                error: "No active game"
+            });
+        }
+
+        if (Date.now() >= activeGame.expiresAt) {
+            await markGameAsLost(activeGame.gameId);
+
+            const gameLocations = await findGameLocations(activeGame.gameId);
+
+            const revealedLocations = gameLocations.map((location) => {
+                const position = difficultySettings[activeGame.difficulty].positions.find(
+                    (position) => position.positionIndex === location.positionIndex
+                );
+
+                return {
+                    locationId: location.locationId,
+                    locationName: location.locationName,
+                    x: position.x,
+                    y: position.y,
+                    routeOrder: location.routeOrder
+                };
+            });
+
+            return res.status(409).json({
+                error: "Game has expired",
+                gameStatus: "lost",
+                treasureCoins: activeGame.treasureCoins,
+                locations: revealedLocations
+            });
+        }
+
+        const expectedLocation = await findExpectedLocation(
+            activeGame.gameId,
+            activeGame.currentStep
+        );
+
+        if (!expectedLocation) {
+            return res.status(500).json({
+                error: "Could not find expected location"
+            });
+        }
+
+        const isCorrect = Number(locationId) === expectedLocation.locationId;
+
+        if (!isCorrect) {
+            await markGameAsLost(activeGame.gameId);
+
+            const gameLocations = await findGameLocations(activeGame.gameId);
+
+            const revealedLocations = gameLocations.map((location) => {
+                const position = difficultySettings[activeGame.difficulty].positions.find(
+                    (position) => position.positionIndex === location.positionIndex
+                );
+
+                return {
+                    locationId: location.locationId,
+                    locationName: location.locationName,
+                    x: position.x,
+                    y: position.y,
+                    routeOrder: location.routeOrder
+                };
+            });
+
+            return res.json({
+                correct: false,
+                gameStatus: "lost",
+                treasureCoins: activeGame.treasureCoins,
+                locations: revealedLocations
+            });
+        }
+
+        const newCurrentStep = activeGame.currentStep + 1;
+
+        const routeLength = difficultySettings[activeGame.difficulty].positions.filter(
+            (position) => position.routeOrder !== null
+        ).length;
+
+        const isFinalAnswer = newCurrentStep === routeLength;
+
+        if (isFinalAnswer) {
+            await updateGameStep(
+                activeGame.gameId,
+                newCurrentStep
+            );
+
+            await markGameAsWon(activeGame.gameId);
+
+            const gameLocations = await findGameLocations(activeGame.gameId);
+
+            const revealedLocations = gameLocations.map((location) => {
+                const position = difficultySettings[activeGame.difficulty].positions.find(
+                    (position) => position.positionIndex === location.positionIndex
+                );
+
+                return {
+                    locationId: location.locationId,
+                    locationName: location.locationName,
+                    x: position.x,
+                    y: position.y,
+                    routeOrder: location.routeOrder
+                };
+            });
+
+            return res.json({
+                correct: true,
+                gameStatus: "won",
+                currentStep: newCurrentStep,
+                treasureCoins: activeGame.treasureCoins,
+                locations: revealedLocations
+            });
+
+        } else {
+            await updateGameStep(
+                activeGame.gameId,
+                newCurrentStep
+            );
+
+            const gameLocations = await findGameLocations(activeGame.gameId);
+
+            const selectedLocation = gameLocations.find(
+                (location) => location.locationId === expectedLocation.locationId
+            );
+
+            if (!selectedLocation) {
+                return res.status(500).json({
+                    error: "Could not find selected location"
+                });
+            }
+
+            const position = difficultySettings[activeGame.difficulty].positions.find(
+                (position) => position.positionIndex === selectedLocation.positionIndex
+            );
+
+            if (!position) {
+                return res.status(500).json({
+                    error: "Could not find location position"
+                });
+            }
+
+            const nextLocation = await findExpectedLocation(
+                activeGame.gameId,
+                newCurrentStep
+            );
+
+            if (!nextLocation) {
+                return res.status(500).json({
+                    error: "Could not find next location"
+                });
+            }
+
+            const nextClue = await findClueByLocationId(
+                nextLocation.locationId
+            );
+
+            if (!nextClue) {
+                return res.status(500).json({
+                    error: "Could not find next clue"
+                });
+            }
+
+            return res.json({
+                correct: true,
+                gameStatus: "playing",
+                currentStep: newCurrentStep,
+                location: {
+                    locationId: selectedLocation.locationId,
+                    locationName: selectedLocation.locationName,
+                    x: position.x,
+                    y: position.y
+                },
+                clue: {
+                    clueText: nextClue.clueText
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Error processing answer:", err);
+
+        return res.status(500).json({
+            error: "Could not process answer"
         });
     }
 

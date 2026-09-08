@@ -14,7 +14,21 @@ Content-Type: application/json
 }
 
 
-### create a new game (easy)
+### logout
+DELETE http://localhost:3001/api/sessions/current
+
+
+### login as username3
+POST http://localhost:3001/api/sessions
+Content-Type: application/json
+
+{
+    "username": "username4",
+    "password": "password4"
+}
+
+
+### create a new game as username4
 POST http://localhost:3001/api/games
 Content-Type: application/json
 
@@ -22,6 +36,18 @@ Content-Type: application/json
     "difficulty": "Easy"
 }
 
+### submit a correct answer
+POST http://localhost:3001/api/games/current/answer
+Content-Type: application/json
 
-### logout
-DELETE http://localhost:3001/api/sessions/current
+{
+    "locationId": 14
+}
+
+### submit a wrong answer
+POST http://localhost:3001/api/games/current/answer
+Content-Type: application/json
+
+{
+    "locationId": 8
+}

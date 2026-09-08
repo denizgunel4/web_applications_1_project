@@ -178,7 +178,7 @@ function findActiveGameByUserId(userId) {
     return new Promise((resolve, reject) => {
         db.get(
             `
-                SELECT gameId
+                SELECT gameId, difficulty, expiresAt, treasureCoins, currentStep
                 FROM games
                 WHERE userId = ? AND gameStatus = 'playing'
             `,
@@ -195,6 +195,123 @@ function findActiveGameByUserId(userId) {
     });
 }
 
+// find expected location for current route step
+function findExpectedLocation(gameId, currentStep) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `
+                SELECT locationId, routeOrder
+                FROM gameLocations
+                WHERE gameId = ? AND routeOrder = ?
+            `,
+            [gameId, currentStep + 1],
+            (err, location) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve(location);
+            }
+        );
+    });
+}
+
+// update the current step of a game
+function updateGameStep(gameId, currentStep) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `
+                UPDATE games
+                SET currentStep = ?
+                WHERE gameId = ?
+            `,
+            [currentStep, gameId],
+            (err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve();
+            }
+        );
+    });
+}
+
+// find all locations belonging to a game
+function findGameLocations(gameId) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `
+                SELECT
+                    gameLocations.locationId,
+                    locations.locationName,
+                    gameLocations.positionIndex,
+                    gameLocations.routeOrder
+                FROM gameLocations
+                JOIN locations
+                    ON gameLocations.locationId = locations.locationId
+                WHERE gameLocations.gameId = ?
+                ORDER BY gameLocations.positionIndex
+            `,
+            [gameId],
+            (err, locations) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve(locations);
+            }
+        );
+    });
+}
+
+// mark a game as won
+function markGameAsWon(gameId) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `
+                UPDATE games
+                SET gameStatus = 'won'
+                WHERE gameId = ?
+            `,
+            [gameId],
+            (err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve();
+            }
+        );
+    });
+}
+
+// mark a game as lost
+function markGameAsLost(gameId) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `
+                UPDATE games
+                SET gameStatus = 'lost'
+                WHERE gameId = ?
+            `,
+            [gameId],
+            (err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve();
+            }
+        );
+    });
+}
+
 export { findUserByUsername,
          findUserById, 
          getAllLocations, 
@@ -202,6 +319,11 @@ export { findUserByUsername,
          addGameLocation,
          findClueByLocationId,
          findActiveGameByUserId,
+         findExpectedLocation,
+         updateGameStep,
+         findGameLocations,
+         markGameAsWon,
+         markGameAsLost,
          beginTransaction,
          commitTransaction,
          rollbackTransaction };
