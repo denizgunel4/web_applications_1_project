@@ -30,46 +30,46 @@ const port = 3001;
 
 // game settings for each difficulty
 const difficultySettings = {
-    Easy: {
+    easy: {
         locationCount: 4,
         timeLimit: 120,
         positions: [
-            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
-            { positionIndex: 2, x: 30, y: 70, routeOrder: 2 },
-            { positionIndex: 3, x: 70, y: 75, routeOrder: null },
-            { positionIndex: 4, x: 80, y: 40, routeOrder: null }
+            { positionIndex: 1, x: 20, y: 75, routeOrder: 1 },
+            { positionIndex: 2, x: 80, y: 25, routeOrder: 2 },
+            { positionIndex: 3, x: 25, y: 25, routeOrder: null },
+            { positionIndex: 4, x: 75, y: 75, routeOrder: null }
         ]
     },
-    Intermediate: {
+    intermediate: {
         locationCount: 8,
         timeLimit: 80,
         positions: [
-            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
-            { positionIndex: 2, x: 30, y: 70, routeOrder: 2 },
-            { positionIndex: 3, x: 35, y: 35, routeOrder: 3 },
-            { positionIndex: 4, x: 45, y: 75, routeOrder: 4 },
-            { positionIndex: 5, x: 55, y: 70, routeOrder: null },
-            { positionIndex: 6, x: 55, y: 40, routeOrder: null },
-            { positionIndex: 7, x: 70, y: 75, routeOrder: null },
-            { positionIndex: 8, x: 80, y: 40, routeOrder: null }
+            { positionIndex: 1, x: 20, y: 75, routeOrder: 1 },
+            { positionIndex: 2, x: 40, y: 60, routeOrder: 2 },
+            { positionIndex: 3, x: 60, y: 40, routeOrder: 3 },
+            { positionIndex: 4, x: 80, y: 25, routeOrder: 4 },
+            { positionIndex: 5, x: 20, y: 25, routeOrder: null },
+            { positionIndex: 6, x: 40, y: 30, routeOrder: null },
+            { positionIndex: 7, x: 60, y: 75, routeOrder: null },
+            { positionIndex: 8, x: 80, y: 70, routeOrder: null }
         ]
     },
-    Hard: {
+    hard: {
         locationCount: 12,
         timeLimit: 60,
         positions: [
-            { positionIndex: 1, x: 20, y: 30, routeOrder: 1 },
-            { positionIndex: 2, x: 28, y: 35, routeOrder: 2 },
-            { positionIndex: 3, x: 35, y: 40, routeOrder: 3 },
-            { positionIndex: 4, x: 42, y: 45, routeOrder: 4 },
-            { positionIndex: 5, x: 48, y: 50, routeOrder: 5 },
-            { positionIndex: 6, x: 55, y: 55, routeOrder: 6 },
-            { positionIndex: 7, x: 60, y: 60, routeOrder: null },
-            { positionIndex: 8, x: 65, y: 65, routeOrder: null },
-            { positionIndex: 9, x: 70, y: 70, routeOrder: null },
-            { positionIndex: 10, x: 75, y: 30, routeOrder: null },
-            { positionIndex: 11, x: 65, y: 30, routeOrder: null },
-            { positionIndex: 12, x: 80, y: 80, routeOrder: null }
+            { positionIndex: 1, x: 15, y: 80, routeOrder: 1 },
+            { positionIndex: 2, x: 29, y: 69, routeOrder: 2 },
+            { positionIndex: 3, x: 43, y: 58, routeOrder: 3 },
+            { positionIndex: 4, x: 57, y: 47, routeOrder: 4 },
+            { positionIndex: 5, x: 71, y: 36, routeOrder: 5 },
+            { positionIndex: 6, x: 85, y: 25, routeOrder: 6 },
+            { positionIndex: 7, x: 15, y: 25, routeOrder: null },
+            { positionIndex: 8, x: 30, y: 40, routeOrder: null },
+            { positionIndex: 9, x: 45, y: 80, routeOrder: null },
+            { positionIndex: 10, x: 60, y: 75, routeOrder: null },
+            { positionIndex: 11, x: 75, y: 65, routeOrder: null },
+            { positionIndex: 12, x: 85, y: 55, routeOrder: null }
         ]
     }
 };
@@ -202,6 +202,7 @@ app.use(session({
     saveUninitialized: false
 }));
 
+app.use(passport.initialize());
 // connect passport to session
 app.use(passport.authenticate("session"));
 
@@ -344,6 +345,7 @@ app.post("/api/games", async (req, res) => {
         });
 
     } catch (err) {
+        console.error("Could not create game:", err);
         if (transactionStarted) {
             try {
                 await rollbackTransaction();
@@ -362,13 +364,6 @@ app.post("/api/games", async (req, res) => {
 // submit an answer for current game
 app.post("/api/games/current/answer", async (req, res) => {
     try {
-        const { locationId } = req.body;
-
-        if (!Number.isInteger(locationId) || locationId <= 0) {
-            return res.status(400).json({
-                error: "Invalid locationId"
-            });
-        }
 
         if (!req.isAuthenticated()) {
             return res.status(401).json({
@@ -408,6 +403,14 @@ app.post("/api/games/current/answer", async (req, res) => {
                 gameStatus: "lost",
                 treasureCoins: activeGame.treasureCoins,
                 locations: revealedLocations
+            });
+        }
+
+        const { locationId } = req.body;
+
+        if (!Number.isInteger(locationId) || locationId <= 0) {
+            return res.status(400).json({
+                error: "Invalid locationId"
             });
         }
 
