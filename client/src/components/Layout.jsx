@@ -26,27 +26,32 @@ function Layout({ user, setUser, children }) {
 
   return (
     <>
-      <nav>
-        <div>
+      <nav className="main-nav">
+        <div className="brand">
           <Link to="/">
-            <h1>Gold Digger</h1>
+            <h1>⚒ Gold Digger</h1>
           </Link>
           <p>Dig for clues. Strike for gold.</p>
         </div>
 
         {user && (
-          <div>
-            <p>Welcome, {user.username}</p>
-            <button onClick={handleLogout}>Logout</button>
+          <div className="user-area">
+            <p>
+              Welcome, <strong>{user.username}</strong>
+            </p>
+            <button className="logout-button" onClick={handleLogout}>
+              Logout
+            </button>
           </div>
         )}
       </nav>
 
-      <main>
+      <main className="main-content">
         {children}
       </main>
     </>
   );
 }
+
 
 export default Layout;

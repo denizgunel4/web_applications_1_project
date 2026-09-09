@@ -80,7 +80,8 @@
 
 ## Screenshot
 
-![Screenshot](./img/screenshot.jpg)
+![Screenshot](./img/ranking.jpg)
+![Screenshot](./img/game.jpg)
 
 ## Users Credentials
 

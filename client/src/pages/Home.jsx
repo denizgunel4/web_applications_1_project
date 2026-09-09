@@ -39,49 +39,82 @@ function Home({ user, setUser }) {
 
     return (
         <Layout user={user} setUser={setUser}>
-            <h2>Welcome to Gold Digger!</h2>
+            <div className="home-page">
 
-            {user ? (
-            <>
-                <h3>Choose difficulty</h3>
+                <div className="home-hero">
+                    <div className="treasure-icon">$</div>
 
-                <div>
-                    <button onClick={() => setDifficulty("easy")}>
-                        Easy
-                    </button>
+                    <h2>Welcome to Gold Digger!</h2>
 
-                    <button onClick={() => setDifficulty("intermediate")}>
-                        Intermediate
-                    </button>
-
-                    <button onClick={() => setDifficulty("hard")}>
-                        Hard
-                    </button>
+                    <p>
+                        Follow the clues, find the hidden path,
+                        and uncover the treasure before time runs out.
+                    </p>
                 </div>
 
-                <button
-                    disabled={!difficulty}
-                    onClick={handleStartGame}
-                >
-                    Start Game
-                </button>
+                {user ? (
+                    <div className="home-content">
 
-                <div>
-                    <Link to="/instructions">Instructions</Link>
-                    <Link to="/ranking">Ranking</Link>
-                </div>
-            </>
-            ) : (
-            <>
-                <div>
-                    <Link to="/login">Login</Link>
-                </div>
+                        <h3>Choose your expedition</h3>
 
-                <div>
-                    <Link to="/instructions">Instructions</Link>
-                </div>
-            </>
-            )}
+                        <div className="difficulty-options">
+                            <button
+                                className={`difficulty-card ${
+                                    difficulty === "easy" ? "selected" : ""
+                                }`}
+                                onClick={() => setDifficulty("easy")}
+                            >
+                                <span>Easy</span>
+                            </button>
+
+                            <button
+                                className={`difficulty-card ${
+                                    difficulty === "intermediate" ? "selected" : ""
+                                }`}
+                                onClick={() => setDifficulty("intermediate")}
+                            >
+                                <span>Intermediate</span>
+                            </button>
+
+                            <button
+                                className={`difficulty-card ${
+                                    difficulty === "hard" ? "selected" : ""
+                                }`}
+                                onClick={() => setDifficulty("hard")}
+                            >
+                                <span>Hard</span>
+                            </button>
+                        </div>
+
+                        <button
+                            className="start-game-button"
+                            disabled={!difficulty}
+                            onClick={handleStartGame}
+                        >
+                            Start Game
+                        </button>
+
+                        <div className="home-links">
+                            <Link to="/instructions">Instructions</Link>
+                            <Link to="/ranking">Ranking</Link>
+                        </div>
+
+                    </div>
+                ) : (
+                    <div className="home-content anonymous-home">
+
+                        <Link className="main-home-button" to="/login">
+                            Login
+                        </Link>
+
+                        <Link className="secondary-home-button" to="/instructions">
+                            Instructions
+                        </Link>
+
+                    </div>
+                )}
+
+            </div>
         </Layout>
     );
 }

@@ -44,35 +44,46 @@ function Login({ setUser }) {
 
   return (
     <Layout>
-      <h2>Login</h2>
+      <div className="login-page">
 
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>
-            Username:
-            <input
-              type="text"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </label>
+        <div className="login-card">
+          <div className="login-header">
+            <h2>Login</h2>
+            <p>Enter your credentials to begin your expedition.</p>
+          </div>
+
+          <form onSubmit={handleLogin}>
+
+            <div className="form-field">
+              <label htmlFor="username">Username</label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+
+            <button className="login-button" type="submit">
+              Login
+            </button>
+
+          </form>
+
+          {error && <p className="login-error">{error}</p>}
         </div>
 
-        <div>
-          <label>
-            Password:
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-        </div>
-
-        <button type="submit">Login</button>
-      </form>
-
-      {error && <p>{error}</p>}
+      </div>
     </Layout>
   );
 }

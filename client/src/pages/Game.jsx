@@ -123,70 +123,87 @@ function Game() {
         );
     }
 
-    return (
+        return (
         <Layout>
+            <div className="game-page">
 
-            <div className="game-layout">
+                <div className="game-header">
+                    <div>
+                        <h2>⛏️ Treasure Hunt</h2>
+                        <p className="game-difficulty">
+                            {gameData.difficulty} expedition
+                        </p>
+                    </div>
 
-                <div className="game-info">
+                    <div className={`timer ${timeLeft <= 10 ? "timer-warning" : ""}`}>
+                        ⏱ {timeLeft}s
+                    </div>
+                </div>
 
-                {gameResult === "won" && <h2>You won!</h2>}
-                {gameResult === "lost" && <h2>You lost!</h2>}
+                {gameResult && (
+                    <div className={`game-result ${gameResult}`}>
+                        {gameResult === "won" && <h2>You won!</h2>}
+                        {gameResult === "lost" && <h2>You lost!</h2>}
 
-                {gameOver && (
-                    <p>
-                        {gameResult === "won"
-                            ? `Well dug, Gold Digger! You uncovered ${treasureCoins} coins!`
-                            : `Keep digging! ${treasureCoins} coins were just out of reach.`}
-                    </p>
+                        <p>
+                            {gameResult === "won"
+                                ? `Well dug, Gold Digger! You uncovered ${treasureCoins} coins!`
+                                : `Keep digging! ${treasureCoins} coins were just out of reach.`}
+                        </p>
+
+                        <div className="route-result">
+                            <h3>🗺️ Route to the treasure</h3>
+
+                            <ol>
+                                {revealedLocations
+                                    .filter((location) => location.routeOrder !== null)
+                                    .sort((a, b) => a.routeOrder - b.routeOrder)
+                                    .map((location) => (
+                                        <li key={location.locationId}>
+                                            {location.locationName}
+                                        </li>
+                                    ))}
+                            </ol>
+                        </div>
+                    </div>
                 )}
 
-                {gameOver && (
-                    <>
-                        <h3>Route to the treasure</h3>
+                <div className="game-layout">
 
-                        <ol>
-                            {revealedLocations
-                                .filter((location) => location.routeOrder !== null)
-                                .sort((a, b) => a.routeOrder - b.routeOrder)
-                                .map((location) => (
-                                    <li key={location.locationId}>
-                                        {location.locationName}
-                                    </li>
+                    <div className="game-info">
+
+                        <div className="clue-card">
+                            <div className="clue-label">Your clue</div>
+                            <p>{currentClue.clueText}</p>
+                        </div>
+
+                        <div className="locations-section">
+                            <h3>Choose a location</h3>
+
+                            <div className="location-buttons">
+                                {gameData.locations.map((location) => (
+                                    <button
+                                        key={location.locationId}
+                                        className="location-button"
+                                        disabled={gameOver}
+                                        onClick={() => handleAnswer(location.locationId)}
+                                    >
+                                        📍 {location.locationName}
+                                    </button>
                                 ))}
-                        </ol>
-                    </>
-                )}
+                            </div>
+                        </div>
 
-            <p>Time left: {timeLeft} seconds</p>
+                    </div>
 
-            <p>Difficulty: {gameData.difficulty}</p>
-            <p>Clue: {currentClue.clueText}</p>
-
-            <h3>Locations</h3>
-
-            <ul>
-                {gameData.locations.map((location) => (
-                    <li key={location.locationId}>
-                        <button
-                            disabled={gameOver}
-                            onClick={() => handleAnswer(location.locationId)}
-                        >
-                            {location.locationName}
-                        </button>
-                    </li>
-                ))}
-            </ul>
+                    <Map
+                        difficulty={gameData.difficulty}
+                        revealedLocations={revealedLocations}
+                    />
 
                 </div>
 
-                <Map
-                    difficulty={gameData.difficulty}
-                    revealedLocations={revealedLocations}
-                />
-            
             </div>
-
         </Layout>
     );
 }

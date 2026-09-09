@@ -40,6 +40,8 @@ function Map({ difficulty, revealedLocations }) {
 
     return (
         <div className="map">
+            <div className="map-title">🗺️ Treasure Map</div>
+
             {positions.map((position, index) => {
                 const revealedLocation = revealedLocations.find(
                     (location) =>
@@ -50,13 +52,17 @@ function Map({ difficulty, revealedLocations }) {
                 return (
                     <div
                         key={index}
-                        className="map-box"
+                        className={`map-box ${
+                            revealedLocation ? "revealed" : "hidden"
+                        }`}
                         style={{
                             left: `${position.x}%`,
                             top: `${position.y}%`,
                         }}
                     >
-                        {revealedLocation && revealedLocation.locationName}
+                        {revealedLocation
+                            ? revealedLocation.locationName
+                            : "?"}
                     </div>
                 );
             })}
