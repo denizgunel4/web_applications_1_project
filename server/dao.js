@@ -54,6 +54,39 @@ function getAllLocations() {
     });
 }
 
+// get the general ranking
+function getRanking() {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `
+                SELECT
+                    users.username,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN games.gameStatus = 'won'
+                            THEN games.treasureCoins
+                            ELSE 0
+                        END
+                    ), 0) AS totalCoins
+                FROM users
+                LEFT JOIN games
+                    ON users.userId = games.userId
+                GROUP BY users.userId
+                ORDER BY totalCoins DESC
+            `,
+            [],
+            (err, ranking) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve(ranking);
+            }
+        );
+    });
+}
+
 // create a new game
 function createGame(userId, difficulty, startedAt, expiresAt, treasureCoins) {
     return new Promise((resolve, reject) => {
@@ -239,6 +272,26 @@ function updateGameStep(gameId, currentStep) {
     });
 }
 
+function findGameLocation(gameId, locationId) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `
+                SELECT locationId
+                FROM gameLocations
+                WHERE gameId = ? AND locationId = ?
+            `,
+            [gameId, locationId],
+            (err, location) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(location);
+            }
+        );
+    });
+}
+
 // find all locations belonging to a game
 function findGameLocations(gameId) {
     return new Promise((resolve, reject) => {
@@ -314,13 +367,15 @@ function markGameAsLost(gameId) {
 
 export { findUserByUsername,
          findUserById, 
-         getAllLocations, 
+         getAllLocations,
+         getRanking,
          createGame,
          addGameLocation,
          findClueByLocationId,
          findActiveGameByUserId,
          findExpectedLocation,
          updateGameStep,
+         findGameLocation,
          findGameLocations,
          markGameAsWon,
          markGameAsLost,

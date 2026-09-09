@@ -20,13 +20,49 @@
   - response body content
 - ...
 
+- POST `/api/sessions`
+  - request parameters: none
+  - request body content: username, password
+  - response body content: req.user containing the authenticated user's userId and username
+
+- GET `/api/sessions/current`
+  - request parameters: none
+  - response body content:
+      - if authenticated -> the user's userId and username
+      - otherwise -> { error: "Not authenticated" }
+
+- DELETE `/api/sessions/current`
+  - request parameters: none
+  - response body content: 
+      - successful logout -> none
+      - failed logout -> { error: "Logout failed" }
+
+- POST `/api/games`
+  - request parameters: none
+  - request body content: difficulty
+  - response body content: gameId, difficulty, expiresAt, currentStep, the first clue's clueText and available locations' locationId and locationName
+
+- POST `/api/games/current/answer`
+  - request parameters: none
+  - request body content: locationId
+  - response body content:
+      - for a correct non-final answer -> correct, gameStatus, currentStep, the selected location's locationId, locationName, x, y, the next clue's clueText
+      - for an incorrect or expired game -> gameStatus, treasureCoins and all locations with their locationId, locationName, x, y and routeOrder
+      - for a final correct answer -> correct, gameStatus, currentStep, treasureCoins and all locations with their locationId, locationName, x, y and routeOrder
+
+- GET `/api/ranking`
+  - request parameters: none
+  - request body content: none
+  - response body content: a list of users with their username and totalCoins, ordered by total coins from highest to lowest
+
+
 ## Database Tables
 
 - Table `users` - contains userId username saltedPassword salt
-- Table `locations` - contains locationId locationName xPosition yPosition
+- Table `locations` - contains locationId locationName
 - Table `clues`- contains clueId clueText locationId
 - Table `games`- contains gameId userId difficulty startedAt expiresAt treasureCoins gameStatus currentStep
-- Table `gameLocations` - contains gameId locationId routeOrder
+- Table `gameLocations` - contains gameId locationId positionIndex routeOrder
 
 ## Main React Components
 

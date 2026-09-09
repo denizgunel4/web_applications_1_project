@@ -18,7 +18,7 @@ Content-Type: application/json
 DELETE http://localhost:3001/api/sessions/current
 
 
-### login as username3
+### login as username4
 POST http://localhost:3001/api/sessions
 Content-Type: application/json
 
@@ -41,7 +41,7 @@ POST http://localhost:3001/api/games/current/answer
 Content-Type: application/json
 
 {
-    "locationId": 14
+    "locationId": 2
 }
 
 ### submit a wrong answer
@@ -51,3 +51,6 @@ Content-Type: application/json
 {
     "locationId": 8
 }
+
+### get ranking
+GET http://localhost:3001/api/ranking

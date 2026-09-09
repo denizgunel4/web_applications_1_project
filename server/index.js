@@ -8,12 +8,14 @@ import initDatabase from "./database/init.js";
 import cors from "cors";
 import {
     getAllLocations,
+    getRanking,
     createGame,
     addGameLocation,
     findClueByLocationId,
     findActiveGameByUserId,
     findExpectedLocation,
     updateGameStep,
+    findGameLocation,
     findGameLocations,
     markGameAsWon,
     markGameAsLost,
@@ -203,6 +205,21 @@ app.use(session({
 // connect passport to session
 app.use(passport.authenticate("session"));
 
+// get general ranking
+app.get("/api/ranking", async (req, res) => {
+    try {
+        const ranking = await getRanking();
+
+        res.json(ranking);
+    } catch (err) {
+        console.error("Error getting ranking:", err);
+
+        res.status(500).json({
+            error: "Could not get ranking"
+        });
+    }
+});
+
 // start a new game
 app.post("/api/games", async (req, res) => {
     const { difficulty } = req.body;
@@ -221,58 +238,67 @@ app.post("/api/games", async (req, res) => {
     });
     }
 
-    const activeGame = await findActiveGameByUserId(req.user.userId);
-
-    if (activeGame) {
-        return res.status(409).json({
-            error: "You already have an active game"
-        });
-    }
-
-    const allLocations = await getAllLocations();
-
-    if (allLocations.length < settings.locationCount) {
-        return res.status(500).json({
-            error: "Not enough locations available"
-        });
-    }
-
-    const gameLocations = selectRandomLocations(
-        allLocations,
-        settings.locationCount
-    );
-
-    const routeLocations = selectRandomLocations(
-        gameLocations,
-        settings.locationCount / 2
-    );
-
-    const route = createRoute(routeLocations);
-
-    const treasureCoins = generateTreasureCoins();
-
-    const startedAt = Date.now();
-    // convert time limit from seconds to milliseconds
-    const expiresAt = startedAt + settings.timeLimit * 1000;
-
-    const firstRouteLocation = route.find(
-        (location) => location.routeOrder === 1
-    );
-
-    const firstClue = await findClueByLocationId(
-        firstRouteLocation.locationId
-    );
-
-    if (!firstClue) {
-        return res.status(500).json({
-            error: "Could not find starting clue"
-        });
-    }
-
-    let gameId;
+    let transactionStarted = false;
 
     try {
+        const activeGame = await findActiveGameByUserId(req.user.userId);
+
+        if (activeGame) {
+            const gameExpired = Date.now() >= activeGame.expiresAt;
+
+            if (gameExpired) {
+                await markGameAsLost(activeGame.gameId);
+            } else {
+                return res.status(409).json({
+                    error: "You already have an active game"
+                });
+            }
+        }
+
+        const allLocations = await getAllLocations();
+
+        if (allLocations.length < settings.locationCount) {
+            return res.status(500).json({
+                error: "Not enough locations available"
+            });
+        }
+
+        const gameLocations = selectRandomLocations(
+            allLocations,
+            settings.locationCount
+        );
+
+        const routeLocations = selectRandomLocations(
+            gameLocations,
+            settings.locationCount / 2
+        );
+
+        const route = createRoute(routeLocations);
+
+        const treasureCoins = generateTreasureCoins();
+
+        const startedAt = Date.now();
+        // convert time limit from seconds to milliseconds
+        const expiresAt = startedAt + settings.timeLimit * 1000;
+
+        const firstRouteLocation = route.find(
+            (location) => location.routeOrder === 1
+        );
+
+        const firstClue = await findClueByLocationId(
+            firstRouteLocation.locationId
+        );
+
+        if (!firstClue) {
+            return res.status(500).json({
+                error: "Could not find starting clue"
+            });
+        }
+
+        let gameId;
+
         await beginTransaction();
+        transactionStarted = true;
 
         gameId = await createGame(
             req.user.userId,
@@ -298,6 +324,7 @@ app.post("/api/games", async (req, res) => {
         }
 
         await commitTransaction();
+        transactionStarted = false;
 
         const availableLocations = gameLocations.map((location) => ({
             locationId: location.locationId,
@@ -317,10 +344,12 @@ app.post("/api/games", async (req, res) => {
         });
 
     } catch (err) {
-        try {
-            await rollbackTransaction();
-        } catch (rollbackErr) {
-            console.error("Rollback failed:", rollbackErr);
+        if (transactionStarted) {
+            try {
+                await rollbackTransaction();
+            } catch (rollbackErr) {
+                console.error("Rollback failed:", rollbackErr);
+            }
         }
 
         return res.status(500).json({
@@ -334,6 +363,12 @@ app.post("/api/games", async (req, res) => {
 app.post("/api/games/current/answer", async (req, res) => {
     try {
         const { locationId } = req.body;
+
+        if (!Number.isInteger(locationId) || locationId <= 0) {
+            return res.status(400).json({
+                error: "Invalid locationId"
+            });
+        }
 
         if (!req.isAuthenticated()) {
             return res.status(401).json({
@@ -376,6 +411,17 @@ app.post("/api/games/current/answer", async (req, res) => {
             });
         }
 
+        const gameLocation = await findGameLocation(
+            activeGame.gameId,
+            locationId
+        );
+
+        if (!gameLocation) {
+            return res.status(400).json({
+                error: "Location is not part of this game"
+            });
+        }
+
         const expectedLocation = await findExpectedLocation(
             activeGame.gameId,
             activeGame.currentStep
@@ -387,7 +433,7 @@ app.post("/api/games/current/answer", async (req, res) => {
             });
         }
 
-        const isCorrect = Number(locationId) === expectedLocation.locationId;
+        const isCorrect = locationId === expectedLocation.locationId;
 
         if (!isCorrect) {
             await markGameAsLost(activeGame.gameId);
@@ -457,11 +503,6 @@ app.post("/api/games/current/answer", async (req, res) => {
             });
 
         } else {
-            await updateGameStep(
-                activeGame.gameId,
-                newCurrentStep
-            );
-
             const gameLocations = await findGameLocations(activeGame.gameId);
 
             const selectedLocation = gameLocations.find(
@@ -504,6 +545,11 @@ app.post("/api/games/current/answer", async (req, res) => {
                     error: "Could not find next clue"
                 });
             }
+
+            await updateGameStep(
+                activeGame.gameId,
+                newCurrentStep
+            );
 
             return res.json({
                 correct: true,
