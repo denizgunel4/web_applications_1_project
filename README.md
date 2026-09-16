@@ -11,17 +11,6 @@
 
 ## API Server
 
-- POST `/api/something`
-  - request parameters and request body content
-  - response body content
-- GET `/api/something`
-  - request parameters
-  - response body content
-- POST `/api/something`
-  - request parameters and request body content
-  - response body content
-- ...
-
 - POST `/api/sessions`
   - request parameters: none
   - request body content: username, password
